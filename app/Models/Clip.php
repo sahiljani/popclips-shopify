@@ -19,7 +19,6 @@ class Clip extends Model
         'description',
         'video_url',
         'thumbnail_url',
-        'cloudinary_public_id',
         'shopify_file_id',
         'duration',
         'aspect_ratio',

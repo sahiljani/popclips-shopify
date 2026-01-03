@@ -12,9 +12,9 @@ class AuthenticateShop
     public function handle(Request $request, Closure $next): Response
     {
         // Try to get shop domain from multiple sources
-        $shopDomain = $request->query('shop') 
+        $shopDomain = $request->query('shop')
             ?? $request->header('X-Shop-Domain')
-            ?? $request->session()->get('shop_domain');
+            ?? ($request->hasSession() ? $request->session()->get('shop_domain') : null);
 
         if (! $shopDomain) {
             // Get all active shops to help with debugging
@@ -59,9 +59,11 @@ class AuthenticateShop
             ], 404);
         }
 
-        // Store shop domain in session for future requests
-        $request->session()->put('shop_domain', $shopDomain);
-        
+        // Store shop domain in session for future requests (if session is available)
+        if ($request->hasSession()) {
+            $request->session()->put('shop_domain', $shopDomain);
+        }
+
         $request->attributes->set('shop', $shop);
 
         return $next($request);

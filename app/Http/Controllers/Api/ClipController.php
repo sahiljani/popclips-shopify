@@ -4,14 +4,12 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Clip;
-use App\Services\CloudinaryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
 class ClipController extends Controller
 {
-    public function __construct(protected CloudinaryService $cloudinaryService) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -66,7 +64,6 @@ class ClipController extends Controller
             'description' => $request->input('description'),
             'video_url' => $request->input('video_url'),
             'thumbnail_url' => $request->input('thumbnail_url'),
-            'cloudinary_public_id' => null,
             'shopify_file_id' => $request->input('shopify_file_id'),
             'duration' => $request->input('duration'),
             'file_size' => $request->input('file_size'),
@@ -119,10 +116,7 @@ class ClipController extends Controller
 
         $clip = Clip::forShop($shop->id)->findOrFail($id);
 
-        if ($clip->cloudinary_public_id) {
-            $this->cloudinaryService->deleteVideo($clip->cloudinary_public_id);
-        }
-
+        // Video is stored in Shopify, no CDN cleanup needed
         $clip->delete();
 
         return response()->json(null, 204);

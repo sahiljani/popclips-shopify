@@ -332,12 +332,14 @@ class ShopifyService
                         }
                 GQL;
 
+        // Use VIDEO resource for video files as per Shopify documentation
+        // https://shopify.dev/docs/api/admin-graphql/latest/mutations/stageduploadscreate
         $data = $this->graphql($shop, $mutation, [
             'input' => [[
-                'resource' => 'FILE',
+                'resource' => 'VIDEO',
                 'filename' => $fileName,
                 'mimeType' => $mimeType,
-                'fileSize' => $fileSize,
+                'fileSize' => (string) $fileSize,
                 'httpMethod' => 'POST',
             ]],
         ]);
@@ -382,7 +384,6 @@ class ShopifyService
                                     ... on Video {
                                         duration
                                         status
-                                        originalFilename
                                         sources {
                                             url
                                             format
@@ -402,17 +403,23 @@ class ShopifyService
 
         $data = $this->graphql($shop, $mutation, [
             'files' => [[
-                'contentType' => 'FILE',
+                'contentType' => 'VIDEO',
                 'originalSource' => $resourceUrl,
                 'alt' => $altText,
-                'filename' => $fileName,
             ]],
+        ]);
+
+        // Log the full response to debug
+        Log::info('Shopify fileCreate response', [
+            'shop' => $shop->shopify_domain,
+            'full_response' => $data,
         ]);
 
         if (! $data || ! empty($data['fileCreate']['userErrors'])) {
             Log::error('Shopify fileCreate error', [
                 'shop' => $shop->shopify_domain,
                 'errors' => $data['fileCreate']['userErrors'] ?? [],
+                'full_response' => $data,
             ]);
 
             return null;
@@ -421,9 +428,80 @@ class ShopifyService
         $file = $data['fileCreate']['files'][0] ?? null;
 
         if (! $file) {
+            Log::error('Shopify fileCreate - no file in response', [
+                'shop' => $shop->shopify_domain,
+                'full_data' => $data,
+            ]);
             return null;
         }
 
+        $source = $file['sources'][0] ?? null;
+
+        // Video files may not have sources immediately - Shopify processes them asynchronously
+        // Return the file info even if sources aren't ready yet
+        $result = [
+            'id' => $file['id'],
+            'url' => $source['url'] ?? null,
+            'preview_image_url' => $file['preview']['image']['url'] ?? null,
+            'duration' => $file['duration'] ?? null,
+            'file_status' => $file['fileStatus'] ?? 'PROCESSING',
+            'original_filename' => $fileName,
+            'sources' => $file['sources'] ?? [],
+            'status' => ($source && $source['url']) ? 'ready' : 'processing',
+        ];
+
+        Log::info('Shopify fileCreate success', [
+            'shop' => $shop->shopify_domain,
+            'result' => $result,
+            'note' => empty($file['sources']) ? 'Video is processing, sources not available yet' : 'Video ready with sources',
+        ]);
+
+        return $result;
+    }
+
+    public function getFileById(Shop $shop, string $fileId): ?array
+    {
+        $query = <<<'GQL'
+                        query getFile($id: ID!) {
+                            file: node(id: $id) {
+                                ... on Video {
+                                    id
+                                    fileStatus
+                                    duration
+                                    status
+                                    preview {
+                                        image {
+                                            url
+                                        }
+                                    }
+                                    sources {
+                                        url
+                                        format
+                                        height
+                                        width
+                                        mimeType
+                                    }
+                                }
+                                ... on GenericFile {
+                                    id
+                                    fileStatus
+                                    preview {
+                                        image {
+                                            url
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                GQL;
+
+        $data = $this->graphql($shop, $query, ['id' => $fileId]);
+
+        if (! $data || ! isset($data['file'])) {
+            return null;
+        }
+
+        $file = $data['file'];
         $source = $file['sources'][0] ?? null;
 
         return [
@@ -432,8 +510,8 @@ class ShopifyService
             'preview_image_url' => $file['preview']['image']['url'] ?? null,
             'duration' => $file['duration'] ?? null,
             'file_status' => $file['fileStatus'] ?? null,
-            'original_filename' => $file['originalFilename'] ?? $fileName,
             'sources' => $file['sources'] ?? [],
+            'status' => ($source && $source['url']) ? 'ready' : 'processing',
         ];
     }
 
@@ -457,7 +535,6 @@ class ShopifyService
                                         ... on Video {
                                             duration
                                             status
-                                            originalFilename
                                             sources {
                                                 url
                                                 format

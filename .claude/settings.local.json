@@ -1,6 +1,18 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(truncate:*)",
+      "Bash(php artisan:*)",
+      "WebSearch",
+      "WebFetch(domain:gist.github.com)",
+      "WebFetch(domain:www.videeo.live)",
+      "Bash(npm run build:*)",
+      "Bash(vendor/bin/pint:*)",
+      "WebFetch(domain:shopify.dev)"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "laravel-boost"
-  ],
-  "enableAllProjectMcpServers": true
+  ]
 }

@@ -38,7 +38,7 @@ return [
     'shopify' => [
         'api_key' => env('SHOPIFY_API_KEY'),
         'api_secret' => env('SHOPIFY_API_SECRET'),
-        'scopes' => env('SHOPIFY_SCOPES', 'read_products,write_products,read_content,write_content,read_themes,write_themes'),
+        'scopes' => env('SHOPIFY_SCOPES', 'read_products,write_products,read_content,write_content,read_files,write_files'),
         'app_host' => env('SHOPIFY_APP_HOST'),
     ],
 

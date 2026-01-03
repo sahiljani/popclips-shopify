@@ -43,6 +43,24 @@ export default function ClipCreate({ shop }) {
 
   const validVideoTypes = ['video/mp4', 'video/webm', 'video/quicktime'];
 
+  async function pollForVideoReady(fileId, maxAttempts = 30, interval = 10000) {
+    for (let i = 0; i < maxAttempts; i++) {
+      await new Promise((resolve) => setTimeout(resolve, interval));
+
+      const fileStatus = await api.getShopifyFileStatus(fileId);
+
+      if (fileStatus.status === 'ready' && fileStatus.url) {
+        return fileStatus;
+      }
+
+      if (fileStatus.file_status === 'FAILED') {
+        throw new Error('Shopify video processing failed. Please try again.');
+      }
+    }
+
+    throw new Error('Video is still processing. Please check back in a few minutes.');
+  }
+
   const fileUpload = !file && (
     <DropZone.FileUpload
       actionHint="Uploads directly to Shopify Files"
@@ -127,8 +145,22 @@ export default function ClipCreate({ shop }) {
       file_name: selected.name,
     });
 
-    if (!completed?.url) {
-      throw new Error('Shopify did not return a file URL.');
+    if (!completed?.id) {
+      throw new Error('Failed to finalize Shopify file upload.');
+    }
+
+    // Shopify processes videos asynchronously
+    // If status is 'processing', poll until ready
+    if (completed.status === 'processing') {
+      setProgress(70);
+      const ready = await pollForVideoReady(completed.id);
+      setProgress(80);
+
+      return {
+        ...ready,
+        file_size: selected.size,
+        original_filename: selected.name,
+      };
     }
 
     return {
@@ -241,7 +273,7 @@ export default function ClipCreate({ shop }) {
                   <BlockStack gap="200">
                     <ProgressBar progress={progress} />
                     <Text variant="bodySm" tone="subdued">
-                      {progress < 65 ? 'Uploading to Shopify...' : 'Finalizing file...'}
+                      {progress < 65 ? 'Uploading to Shopify...' : progress < 80 ? 'Processing video (this may take 2-3 minutes)...' : 'Finalizing...'}
                     </Text>
                   </BlockStack>
                 )}

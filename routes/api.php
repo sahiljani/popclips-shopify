@@ -11,7 +11,16 @@ use App\Http\Controllers\Webhook\ShopifyWebhookController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
-    Route::middleware(['shopify.auth', 'shopify.verify'])->group(function () {
+    // All frontend API routes - only require shop auth, no HMAC verification
+    // HMAC verification (shopify.verify) is only for requests coming directly from Shopify admin
+    Route::middleware(['shopify.auth'])->group(function () {
+        // Files
+        Route::get('/files', [ShopifyFileController::class, 'index']);
+        Route::post('/files/staged-upload', [ShopifyFileController::class, 'stagedUpload']);
+        Route::post('/files/complete', [ShopifyFileController::class, 'complete']);
+        Route::get('/files/{fileId}/status', [ShopifyFileController::class, 'getFileStatus']);
+
+        // Clips
         Route::get('/clips', [ClipController::class, 'index']);
         Route::post('/clips', [ClipController::class, 'store']);
         Route::get('/clips/{id}', [ClipController::class, 'show']);
@@ -21,16 +30,14 @@ Route::prefix('v1')->group(function () {
         Route::post('/clips/{id}/unpublish', [ClipController::class, 'unpublish']);
         Route::get('/clips/{id}/upload-status', [ClipController::class, 'uploadStatus']);
 
-        Route::get('/files', [ShopifyFileController::class, 'index']);
-        Route::post('/files/staged-upload', [ShopifyFileController::class, 'stagedUpload']);
-        Route::post('/files/complete', [ShopifyFileController::class, 'complete']);
-
+        // Hotspots
         Route::get('/clips/{clipId}/hotspots', [HotspotController::class, 'index']);
         Route::post('/clips/{clipId}/hotspots', [HotspotController::class, 'store']);
         Route::get('/clips/{clipId}/hotspots/{id}', [HotspotController::class, 'show']);
         Route::put('/clips/{clipId}/hotspots/{id}', [HotspotController::class, 'update']);
         Route::delete('/clips/{clipId}/hotspots/{id}', [HotspotController::class, 'destroy']);
 
+        // Carousels
         Route::get('/carousels', [CarouselController::class, 'index']);
         Route::post('/carousels', [CarouselController::class, 'store']);
         Route::get('/carousels/{id}', [CarouselController::class, 'show']);
@@ -40,8 +47,10 @@ Route::prefix('v1')->group(function () {
         Route::delete('/carousels/{id}/clips/{clipId}', [CarouselController::class, 'removeClip']);
         Route::put('/carousels/{id}/clips/reorder', [CarouselController::class, 'reorderClips']);
 
+        // Products
         Route::get('/products/search', [HotspotController::class, 'searchProducts']);
 
+        // Analytics
         Route::get('/analytics/overview', [AnalyticsController::class, 'overview']);
         Route::get('/analytics/views-over-time', [AnalyticsController::class, 'viewsOverTime']);
         Route::get('/analytics/top-clips', [AnalyticsController::class, 'topClips']);
@@ -49,6 +58,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/analytics/clips/{clipId}', [AnalyticsController::class, 'clipAnalytics']);
         Route::get('/analytics/export', [AnalyticsController::class, 'export']);
 
+        // Subscription
         Route::get('/subscription', [SubscriptionController::class, 'current']);
         Route::post('/subscription/upgrade', [SubscriptionController::class, 'upgrade']);
         Route::post('/subscription/cancel', [SubscriptionController::class, 'cancel']);

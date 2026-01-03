@@ -92,6 +92,20 @@ class ShopifyFileController extends Controller
             return response()->json(['error' => 'Unable to finalize Shopify file'], 422);
         }
 
+        // File may be processing - return it even if video URL isn't ready yet
+        return response()->json($file);
+    }
+
+    public function getFileStatus(Request $request, string $fileId): JsonResponse
+    {
+        $shop = $request->attributes->get('shop');
+
+        $file = $this->shopifyService->getFileById($shop, $fileId);
+
+        if (! $file) {
+            return response()->json(['error' => 'File not found'], 404);
+        }
+
         return response()->json($file);
     }
 }

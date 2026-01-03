@@ -156,6 +156,7 @@ export const api = {
     method: 'POST',
     body: JSON.stringify(payload),
   }),
+  getShopifyFileStatus: (fileId) => request(`/files/${encodeURIComponent(fileId)}/status`),
   listShopifyFiles: (query = '', after = null) => {
     const params = new URLSearchParams();
     if (query) {
