@@ -87,6 +87,7 @@ jobs:
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
           password: ${{ secrets.SSH_PASSWORD }}
           port: ${{ secrets.SSH_PORT || 22 }}
           source: deploy.tar.gz
@@ -97,6 +98,7 @@ jobs:
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
           password: ${{ secrets.SSH_PASSWORD }}
           port: ${{ secrets.SSH_PORT || 22 }}
           script: |
@@ -107,6 +109,8 @@ jobs:
               echo "❌ Error: artisan file not found. Wrong directory?"
               exit 1
             fi
+            
+            echo "🚀 Starting deployment..."
             
             # Enable maintenance mode
             php artisan down --refresh=15 --retry=60 || {
@@ -125,6 +129,7 @@ jobs:
               echo "✅ Extracted deployment artifact"
             else
               echo "❌ Error: deploy.tar.gz not found"
+              php artisan up
               exit 1
             fi
             
@@ -145,26 +150,25 @@ jobs:
             }
             echo "✅ Migrations completed"
             
-            # Clear and cache configs
-            php artisan config:clear
+            # Optimize application (Laravel 12 best practice)
+            php artisan optimize:clear
             php artisan config:cache
             php artisan route:cache
             php artisan view:cache
-            php artisan event:cache
-            echo "✅ Caches updated"
+            echo "✅ Application optimized"
             
             # Restart queue workers if using queues
-            php artisan queue:restart || echo "⚠️ No queue workers to restart"
+            php artisan queue:restart 2>/dev/null || echo "ℹ️ No queue workers to restart"
             
             # Set correct permissions
             chmod -R 775 storage bootstrap/cache 2>/dev/null || {
-              echo "⚠️ Warning: Could not set permissions with chmod"
+              echo "⚠️ Warning: Could not set permissions"
             }
             
-            # Try to set ownership if possible (may require sudo)
+            # Try to set ownership if possible
             if command -v chown &> /dev/null; then
               chown -R www-data:www-data storage bootstrap/cache 2>/dev/null || {
-                echo "⚠️ Warning: Could not set ownership (may need sudo)"
+                echo "ℹ️ Could not set ownership (may need sudo)"
               }
             fi
             
@@ -180,6 +184,7 @@ jobs:
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
           password: ${{ secrets.SSH_PASSWORD }}
           port: ${{ secrets.SSH_PORT || 22 }}
           script: |
@@ -189,7 +194,7 @@ jobs:
             
             # Check if application is responding
             if php artisan about &> /dev/null; then
-              echo "✅ Application is responding correctly"
+              echo "✅ Application is healthy"
             else
               echo "❌ Application health check failed"
               exit 1
@@ -201,6 +206,9 @@ jobs:
             else
               echo "⚠️ Warning: Database connection check failed"
             fi
+            
+            # Show application info
+            php artisan about --only=environment
             
             echo "✅ Deployment verification completed!"
 
