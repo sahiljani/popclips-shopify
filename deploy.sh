@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # Deployment script for Popclips Laravel Application
-# This script can be run manually on the server or used by CI/CD
+# This script is for manual deployment on the server
+# For automatic deployment, use GitHub Actions CI/CD
 
 set -e
 
@@ -18,14 +19,27 @@ php artisan down --refresh=15 --retry=60 || true
 echo "📥 Pulling latest changes..."
 git pull origin main
 
-# Install PHP dependencies
-echo "📦 Installing Composer dependencies..."
-composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
-
-# Install Node dependencies and build assets
-echo "🏗️ Building frontend assets..."
-npm ci
-npm run build
+# Check if deploy.tar.gz exists (from CI/CD)
+if [ -f "deploy.tar.gz" ]; then
+    echo "📦 Extracting deployment artifact..."
+    cp .env .env.backup 2>/dev/null || true
+    tar -xzf deploy.tar.gz --overwrite
+    mv .env.backup .env 2>/dev/null || true
+    rm -f deploy.tar.gz
+else
+    # Manual deployment - need to install dependencies
+    echo "📦 Installing Composer dependencies..."
+    composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+    
+    # Only build if npm is available
+    if command -v npm &> /dev/null; then
+        echo "🏗️ Building frontend assets..."
+        npm ci
+        npm run build
+    else
+        echo "⚠️ npm not found, skipping frontend build"
+    fi
+fi
 
 # Run database migrations
 echo "🗃️ Running database migrations..."

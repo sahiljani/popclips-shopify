@@ -6,10 +6,9 @@ on:
   workflow_dispatch:
 
 jobs:
-  deploy:
-    name: Deploy to Production Server
+  build:
+    name: Build Application
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
 
     steps:
       - name: Checkout code
@@ -48,7 +47,52 @@ jobs:
       - name: Build assets
         run: npm run build
 
-      - name: Deploy to server via SSH
+      - name: Create deployment artifact
+        run: |
+          tar -czf deploy.tar.gz \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='node_modules' \
+            --exclude='.env' \
+            --exclude='.env.*' \
+            --exclude='tests' \
+            --exclude='phpunit.xml' \
+            --exclude='*.md' \
+            --exclude='.claude' \
+            --exclude='.mcp.json' \
+            --exclude='boost.json' \
+            .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-artifact
+          path: deploy.tar.gz
+          retention-days: 1
+
+  deploy:
+    name: Deploy to Server
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: deployment-artifact
+
+      - name: Deploy to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          source: deploy.tar.gz
+          target: /home/janisahil-popclips/htdocs/popclips.janisahil.com
+
+      - name: Execute deployment script
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -61,15 +105,17 @@ jobs:
             # Enable maintenance mode
             php artisan down --refresh=15 --retry=60 || true
             
-            # Pull latest changes
-            git pull origin main
+            # Backup current .env
+            cp .env .env.backup 2>/dev/null || true
             
-            # Install PHP dependencies
-            composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+            # Extract deployment artifact
+            tar -xzf deploy.tar.gz --overwrite
             
-            # Install Node dependencies and build assets
-            npm ci
-            npm run build
+            # Restore .env
+            mv .env.backup .env 2>/dev/null || true
+            
+            # Remove artifact
+            rm -f deploy.tar.gz
             
             # Run database migrations
             php artisan migrate --force
@@ -88,6 +134,8 @@ jobs:
             
             # Disable maintenance mode
             php artisan up
+            
+            echo "✅ Deployment completed successfully!"
 
       - name: Deployment notification
         if: always()
