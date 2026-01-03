@@ -43,7 +43,7 @@ export default function ClipCreate({ shop }) {
 
   const validVideoTypes = ['video/mp4', 'video/webm', 'video/quicktime'];
 
-  async function pollForVideoReady(fileId, maxAttempts = 30, interval = 10000) {
+  async function pollForVideoReady(fileId, maxAttempts = 20, interval = 5000) {
     for (let i = 0; i < maxAttempts; i++) {
       await new Promise((resolve) => setTimeout(resolve, interval));
 
@@ -58,7 +58,8 @@ export default function ClipCreate({ shop }) {
       }
     }
 
-    throw new Error('Video is still processing. Please check back in a few minutes.');
+    // Return the current status even if not ready yet - we'll save it as processing
+    return api.getShopifyFileStatus(fileId);
   }
 
   const fileUpload = !file && (
@@ -150,12 +151,14 @@ export default function ClipCreate({ shop }) {
     }
 
     // Shopify processes videos asynchronously
-    // If status is 'processing', poll until ready
+    // If status is 'processing', poll until ready (or timeout)
     if (completed.status === 'processing') {
       setProgress(70);
       const ready = await pollForVideoReady(completed.id);
       setProgress(80);
 
+      // Even if not fully ready, return what we have
+      // The backend will mark it as 'processing' if url is null
       return {
         ...ready,
         file_size: selected.size,
@@ -200,7 +203,7 @@ export default function ClipCreate({ shop }) {
       const clip = await api.createClip({
         title: title.trim(),
         description: description.trim(),
-        video_url: fileData.url,
+        video_url: fileData.url || null,
         thumbnail_url: fileData.preview_image_url || fileData.thumbnail_url || null,
         shopify_file_id: fileData.id,
         duration: fileData.duration,
@@ -209,6 +212,8 @@ export default function ClipCreate({ shop }) {
       });
 
       setProgress(100);
+
+      // Navigate to the clip - it will show as 'processing' if video isn't ready yet
       navigate(`/clips/${clip.id}`);
     } catch (err) {
       setError(err.message);
@@ -273,7 +278,7 @@ export default function ClipCreate({ shop }) {
                   <BlockStack gap="200">
                     <ProgressBar progress={progress} />
                     <Text variant="bodySm" tone="subdued">
-                      {progress < 65 ? 'Uploading to Shopify...' : progress < 80 ? 'Processing video (this may take 2-3 minutes)...' : 'Finalizing...'}
+                      {progress < 65 ? 'Uploading to Shopify...' : progress < 80 ? 'Waiting for video to process...' : 'Creating clip...'}
                     </Text>
                   </BlockStack>
                 )}

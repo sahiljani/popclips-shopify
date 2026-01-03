@@ -31,7 +31,7 @@ class ClipController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'nullable|string|max:1000',
             'shopify_file_id' => 'required|string|max:255',
-            'video_url' => 'required|url',
+            'video_url' => 'nullable|url',
             'thumbnail_url' => 'nullable|url',
             'duration' => 'nullable|integer|min:0',
             'file_size' => 'nullable|integer|min:0',
@@ -68,7 +68,7 @@ class ClipController extends Controller
             'duration' => $request->input('duration'),
             'file_size' => $request->input('file_size'),
             'aspect_ratio' => $request->input('aspect_ratio', '9:16'),
-            'status' => 'ready',
+            'status' => $request->input('video_url') ? 'ready' : 'processing',
         ]);
 
         return response()->json($clip, 201);

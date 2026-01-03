@@ -8,7 +8,8 @@
       "WebFetch(domain:www.videeo.live)",
       "Bash(npm run build:*)",
       "Bash(vendor/bin/pint:*)",
-      "WebFetch(domain:shopify.dev)"
+      "WebFetch(domain:shopify.dev)",
+      "Bash(git add:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
