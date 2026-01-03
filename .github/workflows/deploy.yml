@@ -102,40 +102,107 @@ jobs:
           script: |
             cd /home/janisahil-popclips/htdocs/popclips.janisahil.com
             
+            # Verify we're in the right directory
+            if [ ! -f "artisan" ]; then
+              echo "❌ Error: artisan file not found. Wrong directory?"
+              exit 1
+            fi
+            
             # Enable maintenance mode
-            php artisan down --refresh=15 --retry=60 || true
+            php artisan down --refresh=15 --retry=60 || {
+              echo "⚠️ Warning: Could not enable maintenance mode"
+            }
             
             # Backup current .env
-            cp .env .env.backup 2>/dev/null || true
+            if [ -f ".env" ]; then
+              cp .env .env.backup
+              echo "✅ Backed up .env file"
+            fi
             
             # Extract deployment artifact
-            tar -xzf deploy.tar.gz --overwrite
+            if [ -f "deploy.tar.gz" ]; then
+              tar -xzf deploy.tar.gz --overwrite
+              echo "✅ Extracted deployment artifact"
+            else
+              echo "❌ Error: deploy.tar.gz not found"
+              exit 1
+            fi
             
             # Restore .env
-            mv .env.backup .env 2>/dev/null || true
+            if [ -f ".env.backup" ]; then
+              mv .env.backup .env
+              echo "✅ Restored .env file"
+            fi
             
             # Remove artifact
             rm -f deploy.tar.gz
             
             # Run database migrations
-            php artisan migrate --force
+            php artisan migrate --force || {
+              echo "❌ Error: Migration failed"
+              php artisan up
+              exit 1
+            }
+            echo "✅ Migrations completed"
             
             # Clear and cache configs
+            php artisan config:clear
             php artisan config:cache
             php artisan route:cache
             php artisan view:cache
             php artisan event:cache
+            echo "✅ Caches updated"
             
             # Restart queue workers if using queues
-            php artisan queue:restart || true
+            php artisan queue:restart || echo "⚠️ No queue workers to restart"
             
             # Set correct permissions
-            chmod -R 775 storage bootstrap/cache
+            chmod -R 775 storage bootstrap/cache 2>/dev/null || {
+              echo "⚠️ Warning: Could not set permissions with chmod"
+            }
+            
+            # Try to set ownership if possible (may require sudo)
+            if command -v chown &> /dev/null; then
+              chown -R www-data:www-data storage bootstrap/cache 2>/dev/null || {
+                echo "⚠️ Warning: Could not set ownership (may need sudo)"
+              }
+            fi
             
             # Disable maintenance mode
             php artisan up
+            echo "✅ Maintenance mode disabled"
             
             echo "✅ Deployment completed successfully!"
+            echo "🚀 Application is now live!"
+
+      - name: Verify deployment
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script: |
+            cd /home/janisahil-popclips/htdocs/popclips.janisahil.com
+            
+            echo "🔍 Verifying deployment..."
+            
+            # Check if application is responding
+            if php artisan about &> /dev/null; then
+              echo "✅ Application is responding correctly"
+            else
+              echo "❌ Application health check failed"
+              exit 1
+            fi
+            
+            # Verify database connection
+            if php artisan db:show &> /dev/null; then
+              echo "✅ Database connection verified"
+            else
+              echo "⚠️ Warning: Database connection check failed"
+            fi
+            
+            echo "✅ Deployment verification completed!"
 
       - name: Deployment notification
         if: always()

@@ -199,24 +199,35 @@ Merchants can add the carousel via the Theme Editor without any code changes.
 
 ## CI/CD Pipeline
 
-This project uses GitHub Actions for continuous integration and deployment.
+This project uses GitHub Actions for continuous integration and deployment with comprehensive testing and deployment verification.
 
 ### Workflows
 
 #### CI Workflow (`.github/workflows/ci.yml`)
 Runs on every push and pull request to `main` and `develop` branches:
-- **Tests**: Runs PHPUnit tests on PHP 8.2, 8.3, and 8.4
+- **Tests**: Runs PHPUnit tests on PHP 8.2, 8.3, and 8.4 (matrix testing)
+- **Database Setup**: Automatically creates database and runs migrations before tests
 - **Code Style**: Checks code formatting with Laravel Pint
-- **Build Assets**: Verifies frontend assets build successfully
+- **Build Assets**: Verifies frontend assets build successfully with Vite
 
 #### Deploy Workflow (`.github/workflows/deploy.yml`)
 Automatically deploys to production when code is pushed to `main`:
-- Installs dependencies
-- Builds assets
-- SSHs into the production server
-- Pulls latest changes
-- Runs migrations
-- Clears caches
+- **Build Phase**: 
+  - Installs Composer dependencies (production mode)
+  - Builds optimized frontend assets
+  - Creates compressed deployment artifact
+- **Deploy Phase**:
+  - Enables maintenance mode
+  - Backs up `.env` file
+  - Extracts new deployment
+  - Runs database migrations with error handling
+  - Clears and rebuilds all caches
+  - Sets proper file permissions
+  - Disables maintenance mode
+- **Verification Phase**:
+  - Checks application health with `php artisan about`
+  - Verifies database connection
+  - Confirms deployment success
 
 ### GitHub Secrets Required
 
