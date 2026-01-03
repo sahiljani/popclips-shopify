@@ -6,95 +6,12 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
-    name: Build Application
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: 8.4
-          extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, pdo_mysql, bcmath, soap, intl, gd, exif, iconv
-          coverage: none
-
-      - name: Get Composer cache directory
-        id: composer-cache
-        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
-
-      - name: Cache Composer dependencies
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.composer-cache.outputs.dir }}
-          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
-          restore-keys: ${{ runner.os }}-composer-
-
-      - name: Install Composer dependencies (production)
-        run: composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install NPM dependencies
-        run: npm ci
-
-      - name: Build assets
-        run: npm run build
-
-      - name: Create deployment artifact
-        run: |
-          tar -czf ../deploy.tar.gz \
-            --exclude='.git' \
-            --exclude='.github' \
-            --exclude='node_modules' \
-            --exclude='.env' \
-            --exclude='.env.*' \
-            --exclude='tests' \
-            --exclude='phpunit.xml' \
-            --exclude='*.md' \
-            --exclude='.claude' \
-            --exclude='.mcp.json' \
-            --exclude='boost.json' \
-            --exclude='deploy.tar.gz' \
-            .
-          mv ../deploy.tar.gz .
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: deployment-artifact
-          path: deploy.tar.gz
-          retention-days: 1
-
   deploy:
-    name: Deploy to Server
+    name: Deploy to Production Server
     runs-on: ubuntu-latest
-    needs: build
-    if: github.ref == 'refs/heads/main'
 
     steps:
-      - name: Download artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: deployment-artifact
-
-      - name: Deploy to server
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          password: ${{ secrets.SSH_PASSWORD }}
-          port: 22
-          source: deploy.tar.gz
-          target: /home/janisahil-popclips/htdocs/popclips.janisahil.com
-
-      - name: Execute deployment script
+      - name: Deploy and run deployment script
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -104,43 +21,34 @@ jobs:
           script: |
             cd /home/janisahil-popclips/htdocs/popclips.janisahil.com
             
+            echo "🚀 Starting deployment via GitHub Actions..."
+            
             # Verify we're in the right directory
             if [ ! -f "artisan" ]; then
               echo "❌ Error: artisan file not found. Wrong directory?"
               exit 1
             fi
             
-            echo "🚀 Starting deployment..."
+            # Pull latest changes from GitHub
+            git fetch origin main
+            git reset --hard origin/main
+            echo "✅ Code updated from GitHub"
             
             # Enable maintenance mode
-            php artisan down --refresh=15 --retry=60 || {
-              echo "⚠️ Warning: Could not enable maintenance mode"
-            }
+            php artisan down --refresh=15 --retry=60 || echo "⚠️ Maintenance mode failed"
             
-            # Backup current .env
-            if [ -f ".env" ]; then
-              cp .env .env.backup
-              echo "✅ Backed up .env file"
-            fi
+            # Install Composer dependencies (production)
+            composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+            echo "✅ Composer dependencies installed"
             
-            # Extract deployment artifact
-            if [ -f "deploy.tar.gz" ]; then
-              tar -xzf deploy.tar.gz --overwrite
-              echo "✅ Extracted deployment artifact"
+            # Install NPM dependencies and build assets
+            if command -v npm &> /dev/null; then
+              npm ci
+              npm run build
+              echo "✅ Frontend assets built"
             else
-              echo "❌ Error: deploy.tar.gz not found"
-              php artisan up
-              exit 1
+              echo "⚠️ npm not found, skipping frontend build"
             fi
-            
-            # Restore .env
-            if [ -f ".env.backup" ]; then
-              mv .env.backup .env
-              echo "✅ Restored .env file"
-            fi
-            
-            # Remove artifact
-            rm -f deploy.tar.gz
             
             # Run database migrations
             php artisan migrate --force || {
@@ -150,27 +58,18 @@ jobs:
             }
             echo "✅ Migrations completed"
             
-            # Optimize application (Laravel 12 best practice)
+            # Optimize application
             php artisan optimize:clear
             php artisan config:cache
             php artisan route:cache
             php artisan view:cache
             echo "✅ Application optimized"
             
-            # Restart queue workers if using queues
+            # Restart queue workers
             php artisan queue:restart 2>/dev/null || echo "ℹ️ No queue workers to restart"
             
             # Set correct permissions
-            chmod -R 775 storage bootstrap/cache 2>/dev/null || {
-              echo "⚠️ Warning: Could not set permissions"
-            }
-            
-            # Try to set ownership if possible
-            if command -v chown &> /dev/null; then
-              chown -R www-data:www-data storage bootstrap/cache 2>/dev/null || {
-                echo "ℹ️ Could not set ownership (may need sudo)"
-              }
-            fi
+            chmod -R 775 storage bootstrap/cache 2>/dev/null
             
             # Disable maintenance mode
             php artisan up
@@ -191,31 +90,24 @@ jobs:
             
             echo "🔍 Verifying deployment..."
             
-            # Check if application is responding
+            # Check if application is healthy
             if php artisan about &> /dev/null; then
               echo "✅ Application is healthy"
+              php artisan about --only=environment
             else
               echo "❌ Application health check failed"
               exit 1
             fi
             
-            # Verify database connection
-            if php artisan db:show &> /dev/null; then
-              echo "✅ Database connection verified"
-            else
-              echo "⚠️ Warning: Database connection check failed"
-            fi
-            
-            # Show application info
-            php artisan about --only=environment
-            
             echo "✅ Deployment verification completed!"
 
-      - name: Deployment notification
+      - name: Deployment summary
         if: always()
         run: |
           if [ "${{ job.status }}" == "success" ]; then
-            echo "✅ Deployment successful!"
+            echo "✅ ✅ ✅ DEPLOYMENT SUCCESSFUL ✅ ✅ ✅"
+            echo "🚀 Application deployed and verified successfully!"
           else
-            echo "❌ Deployment failed!"
+            echo "❌ ❌ ❌ DEPLOYMENT FAILED ❌ ❌ ❌"
+            echo "⚠️ Check the logs above for details"
           fi
