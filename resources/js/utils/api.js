@@ -1,10 +1,10 @@
 const API_BASE = '/api/v1';
 
 /**
- * Get shop domain from URL or localStorage
+ * Get shop domain from URL, meta tag, Shopify admin path, or localStorage
  */
 function getShopDomain() {
-  // First try URL parameter
+  // First try URL parameter (works when app passes ?shop=xxx)
   const urlParams = new URLSearchParams(window.location.search);
   let shopDomain = urlParams.get('shop');
   
@@ -12,6 +12,46 @@ function getShopDomain() {
     // Store in localStorage for future use
     localStorage.setItem('shop_domain', shopDomain);
     return shopDomain;
+  }
+
+  // Try meta tag set by backend
+  const metaShop = document.querySelector('meta[name="shop-domain"]');
+  if (metaShop && metaShop.content) {
+    shopDomain = metaShop.content;
+    localStorage.setItem('shop_domain', shopDomain);
+    return shopDomain;
+  }
+
+  // Try to extract from Shopify admin URL path: admin.shopify.com/store/{shop-name}/apps/...
+  // or from parent frame URL if embedded
+  try {
+    const currentUrl = window.location.href;
+    const adminMatch = currentUrl.match(/admin\.shopify\.com\/store\/([^/]+)/);
+    if (adminMatch && adminMatch[1]) {
+      shopDomain = `${adminMatch[1]}.myshopify.com`;
+      localStorage.setItem('shop_domain', shopDomain);
+      return shopDomain;
+    }
+  } catch (e) {
+    // Ignore errors from cross-origin access
+  }
+
+  // Try to get from the embedded iframe's src URL
+  try {
+    if (window.self !== window.top) {
+      // We're in an iframe, check if we can access referrer
+      const referrer = document.referrer;
+      if (referrer) {
+        const referrerMatch = referrer.match(/admin\.shopify\.com\/store\/([^/]+)/);
+        if (referrerMatch && referrerMatch[1]) {
+          shopDomain = `${referrerMatch[1]}.myshopify.com`;
+          localStorage.setItem('shop_domain', shopDomain);
+          return shopDomain;
+        }
+      }
+    }
+  } catch (e) {
+    // Ignore cross-origin errors
   }
   
   // Fallback to localStorage
