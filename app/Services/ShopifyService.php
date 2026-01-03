@@ -9,8 +9,11 @@ use Illuminate\Support\Facades\Log;
 class ShopifyService
 {
     protected string $apiKey;
+
     protected string $apiSecret;
+
     protected string $scopes;
+
     protected string $appHost;
 
     public function __construct()
@@ -39,10 +42,10 @@ class ShopifyService
         try {
             $response = Http::withoutVerifying()
                 ->post("https://{$shopDomain}/admin/oauth/access_token", [
-                'client_id' => $this->apiKey,
-                'client_secret' => $this->apiSecret,
-                'code' => $code,
-            ]);
+                    'client_id' => $this->apiKey,
+                    'client_secret' => $this->apiSecret,
+                    'code' => $code,
+                ]);
 
             if ($response->successful()) {
                 return $response->json('access_token');
@@ -67,12 +70,13 @@ class ShopifyService
     public function verifyWebhook(string $data, string $hmacHeader): bool
     {
         $calculatedHmac = base64_encode(hash_hmac('sha256', $data, $this->apiSecret, true));
+
         return hash_equals($calculatedHmac, $hmacHeader);
     }
 
     public function verifyRequest(array $query): bool
     {
-        if (!isset($query['hmac'])) {
+        if (! isset($query['hmac'])) {
             return false;
         }
 
@@ -92,8 +96,8 @@ class ShopifyService
         try {
             $response = Http::withoutVerifying()
                 ->withHeaders([
-                'X-Shopify-Access-Token' => $accessToken,
-            ])->get("https://{$shopDomain}/admin/api/2026-01/shop.json");
+                    'X-Shopify-Access-Token' => $accessToken,
+                ])->get("https://{$shopDomain}/admin/api/2026-01/shop.json");
 
             if ($response->successful()) {
                 return $response->json('shop');
@@ -264,52 +268,52 @@ class ShopifyService
         }
     }
 
-        protected function graphql(Shop $shop, string $query, array $variables = []): ?array
-        {
-                try {
-                        $response = Http::withoutVerifying()->withHeaders([
-                                'X-Shopify-Access-Token' => $shop->access_token,
-                                'Content-Type' => 'application/json',
-                        ])->post("https://{$shop->shopify_domain}/admin/api/2026-01/graphql.json", [
-                                'query' => $query,
-                                'variables' => $variables,
-                        ]);
+    protected function graphql(Shop $shop, string $query, array $variables = []): ?array
+    {
+        try {
+            $response = Http::withoutVerifying()->withHeaders([
+                'X-Shopify-Access-Token' => $shop->access_token,
+                'Content-Type' => 'application/json',
+            ])->post("https://{$shop->shopify_domain}/admin/api/2026-01/graphql.json", [
+                'query' => $query,
+                'variables' => $variables,
+            ]);
 
-                        if ($response->failed()) {
-                                Log::error('Shopify GraphQL request failed', [
-                                        'shop' => $shop->shopify_domain,
-                                        'status' => $response->status(),
-                                        'body' => $response->json(),
-                                ]);
+            if ($response->failed()) {
+                Log::error('Shopify GraphQL request failed', [
+                    'shop' => $shop->shopify_domain,
+                    'status' => $response->status(),
+                    'body' => $response->json(),
+                ]);
 
-                                return null;
-                        }
+                return null;
+            }
 
-                        $payload = $response->json();
+            $payload = $response->json();
 
-                        if (isset($payload['errors']) && !empty($payload['errors'])) {
-                                Log::error('Shopify GraphQL errors', [
-                                        'shop' => $shop->shopify_domain,
-                                        'errors' => $payload['errors'],
-                                ]);
+            if (isset($payload['errors']) && ! empty($payload['errors'])) {
+                Log::error('Shopify GraphQL errors', [
+                    'shop' => $shop->shopify_domain,
+                    'errors' => $payload['errors'],
+                ]);
 
-                                return null;
-                        }
+                return null;
+            }
 
-                        return $payload['data'] ?? null;
-                } catch (\Exception $e) {
-                        Log::error('Shopify GraphQL exception', [
-                                'shop' => $shop->shopify_domain,
-                                'error' => $e->getMessage(),
-                        ]);
+            return $payload['data'] ?? null;
+        } catch (\Exception $e) {
+            Log::error('Shopify GraphQL exception', [
+                'shop' => $shop->shopify_domain,
+                'error' => $e->getMessage(),
+            ]);
 
-                        return null;
-                }
+            return null;
         }
+    }
 
-        public function createStagedUpload(Shop $shop, string $fileName, string $mimeType, int $fileSize): ?array
-        {
-                $mutation = <<<'GQL'
+    public function createStagedUpload(Shop $shop, string $fileName, string $mimeType, int $fileSize): ?array
+    {
+        $mutation = <<<'GQL'
                         mutation stagedUploadsCreate($input: [StagedUploadInput!]!) {
                             stagedUploadsCreate(input: $input) {
                                 stagedTargets {
@@ -328,41 +332,41 @@ class ShopifyService
                         }
                 GQL;
 
-                $data = $this->graphql($shop, $mutation, [
-                        'input' => [[
-                                'resource' => 'FILE',
-                                'filename' => $fileName,
-                                'mimeType' => $mimeType,
-                                'fileSize' => $fileSize,
-                                'httpMethod' => 'POST',
-                        ]],
-                ]);
+        $data = $this->graphql($shop, $mutation, [
+            'input' => [[
+                'resource' => 'FILE',
+                'filename' => $fileName,
+                'mimeType' => $mimeType,
+                'fileSize' => $fileSize,
+                'httpMethod' => 'POST',
+            ]],
+        ]);
 
-                if (!$data || !empty($data['stagedUploadsCreate']['userErrors'])) {
-                        Log::error('Shopify staged upload error', [
-                                'shop' => $shop->shopify_domain,
-                                'errors' => $data['stagedUploadsCreate']['userErrors'] ?? [],
-                        ]);
+        if (! $data || ! empty($data['stagedUploadsCreate']['userErrors'])) {
+            Log::error('Shopify staged upload error', [
+                'shop' => $shop->shopify_domain,
+                'errors' => $data['stagedUploadsCreate']['userErrors'] ?? [],
+            ]);
 
-                        return null;
-                }
-
-                $target = $data['stagedUploadsCreate']['stagedTargets'][0] ?? null;
-
-                if (!$target) {
-                        return null;
-                }
-
-                return [
-                        'url' => $target['url'],
-                        'resource_url' => $target['resourceUrl'],
-                        'parameters' => $target['parameters'],
-                ];
+            return null;
         }
 
-        public function completeFileUpload(Shop $shop, string $resourceUrl, string $fileName, ?string $altText = null): ?array
-        {
-                $mutation = <<<'GQL'
+        $target = $data['stagedUploadsCreate']['stagedTargets'][0] ?? null;
+
+        if (! $target) {
+            return null;
+        }
+
+        return [
+            'url' => $target['url'],
+            'resource_url' => $target['resourceUrl'],
+            'parameters' => $target['parameters'],
+        ];
+    }
+
+    public function completeFileUpload(Shop $shop, string $resourceUrl, string $fileName, ?string $altText = null): ?array
+    {
+        $mutation = <<<'GQL'
                         mutation fileCreate($files: [FileCreateInput!]!) {
                             fileCreate(files: $files) {
                                 files {
@@ -396,46 +400,46 @@ class ShopifyService
                         }
                 GQL;
 
-                $data = $this->graphql($shop, $mutation, [
-                        'files' => [[
-                                'contentType' => 'FILE',
-                                'originalSource' => $resourceUrl,
-                                'alt' => $altText,
-                                'filename' => $fileName,
-                        ]],
-                ]);
+        $data = $this->graphql($shop, $mutation, [
+            'files' => [[
+                'contentType' => 'FILE',
+                'originalSource' => $resourceUrl,
+                'alt' => $altText,
+                'filename' => $fileName,
+            ]],
+        ]);
 
-                if (!$data || !empty($data['fileCreate']['userErrors'])) {
-                        Log::error('Shopify fileCreate error', [
-                                'shop' => $shop->shopify_domain,
-                                'errors' => $data['fileCreate']['userErrors'] ?? [],
-                        ]);
+        if (! $data || ! empty($data['fileCreate']['userErrors'])) {
+            Log::error('Shopify fileCreate error', [
+                'shop' => $shop->shopify_domain,
+                'errors' => $data['fileCreate']['userErrors'] ?? [],
+            ]);
 
-                        return null;
-                }
-
-                $file = $data['fileCreate']['files'][0] ?? null;
-
-                if (!$file) {
-                        return null;
-                }
-
-                $source = $file['sources'][0] ?? null;
-
-                return [
-                        'id' => $file['id'],
-                        'url' => $source['url'] ?? null,
-                        'preview_image_url' => $file['preview']['image']['url'] ?? null,
-                        'duration' => $file['duration'] ?? null,
-                        'file_status' => $file['fileStatus'] ?? null,
-                        'original_filename' => $file['originalFilename'] ?? $fileName,
-                        'sources' => $file['sources'] ?? [],
-                ];
+            return null;
         }
 
-        public function listVideoFiles(Shop $shop, ?string $search = null, ?string $after = null, int $first = 20): ?array
-        {
-                $query = <<<'GQL'
+        $file = $data['fileCreate']['files'][0] ?? null;
+
+        if (! $file) {
+            return null;
+        }
+
+        $source = $file['sources'][0] ?? null;
+
+        return [
+            'id' => $file['id'],
+            'url' => $source['url'] ?? null,
+            'preview_image_url' => $file['preview']['image']['url'] ?? null,
+            'duration' => $file['duration'] ?? null,
+            'file_status' => $file['fileStatus'] ?? null,
+            'original_filename' => $file['originalFilename'] ?? $fileName,
+            'sources' => $file['sources'] ?? [],
+        ];
+    }
+
+    public function listVideoFiles(Shop $shop, ?string $search = null, ?string $after = null, int $first = 20): ?array
+    {
+        $query = <<<'GQL'
                         query listVideoFiles($first: Int!, $after: String, $query: String) {
                             files(first: $first, after: $after, query: $query) {
                                 edges {
@@ -472,21 +476,21 @@ class ShopifyService
                         }
                 GQL;
 
-                $queryString = 'media_type:video';
-                if ($search) {
-                        $queryString .= ' ' . $search;
-                }
-
-                $data = $this->graphql($shop, $query, [
-                        'first' => $first,
-                        'after' => $after,
-                        'query' => $queryString,
-                ]);
-
-                if (!$data) {
-                        return null;
-                }
-
-                return $data['files'];
+        $queryString = 'media_type:video';
+        if ($search) {
+            $queryString .= ' '.$search;
         }
+
+        $data = $this->graphql($shop, $query, [
+            'first' => $first,
+            'after' => $after,
+            'query' => $queryString,
+        ]);
+
+        if (! $data) {
+            return null;
+        }
+
+        return $data['files'];
+    }
 }

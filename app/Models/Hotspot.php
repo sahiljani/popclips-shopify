@@ -98,7 +98,7 @@ class Hotspot extends Model
 
     public function getFormattedPriceAttribute(): string
     {
-        return $this->product_currency . ' ' . number_format($this->product_price, 2);
+        return $this->product_currency.' '.number_format($this->product_price, 2);
     }
 
     public function toStorefrontArray(): array

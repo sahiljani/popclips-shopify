@@ -10,26 +10,24 @@ use Illuminate\Support\Str;
 
 class ShopifyAuthController extends Controller
 {
-    public function __construct(protected ShopifyService $shopifyService)
-    {
-    }
+    public function __construct(protected ShopifyService $shopifyService) {}
 
     public function install(Request $request)
     {
         $shopDomain = $request->query('shop');
 
-        if (!$shopDomain) {
+        if (! $shopDomain) {
             return response()->json(['error' => 'Shop domain required'], 400);
         }
 
         $shopDomain = $this->sanitizeShopDomain($shopDomain);
 
-        if (!$this->isValidShopDomain($shopDomain)) {
+        if (! $this->isValidShopDomain($shopDomain)) {
             return response()->json(['error' => 'Invalid shop domain'], 400);
         }
 
         $state = Str::random(40);
-            
+
         $redirectUri = route('shopify.callback');
         $authUrl = $this->shopifyService->getAuthUrl($shopDomain, $redirectUri, $state);
 
@@ -43,26 +41,29 @@ class ShopifyAuthController extends Controller
         $state = $request->query('state');
 
         \Log::info('Shopify OAuth Callback', [
-            'has_code' => !empty($code),
+            'has_code' => ! empty($code),
             'shop' => $shopDomain,
-            'has_state' => !empty($state),
+            'has_state' => ! empty($state),
         ]);
 
-        if (!$code || !$shopDomain) {
+        if (! $code || ! $shopDomain) {
             \Log::error('Missing OAuth parameters');
+
             return redirect()->route('error')->with('error', 'Missing required parameters');
         }
 
         // Verify HMAC signature - this is the most reliable method
-        if (!$this->shopifyService->verifyRequest($request->query())) {
+        if (! $this->shopifyService->verifyRequest($request->query())) {
             \Log::error('HMAC verification failed', ['query' => $request->query()]);
+
             return redirect()->route('error')->with('error', 'Invalid request signature');
         }
 
         $accessToken = $this->shopifyService->getAccessToken($shopDomain, $code);
 
-        if (!$accessToken) {
+        if (! $accessToken) {
             \Log::error('Failed to get access token');
+
             return redirect()->route('error')->with('error', 'Failed to get access token');
         }
 
@@ -113,8 +114,8 @@ class ShopifyAuthController extends Controller
 
         $shop = rtrim($shop, '/');
 
-        if (!str_ends_with($shop, '.myshopify.com')) {
-            $shop = $shop . '.myshopify.com';
+        if (! str_ends_with($shop, '.myshopify.com')) {
+            $shop = $shop.'.myshopify.com';
         }
 
         return $shop;

@@ -20,7 +20,7 @@ return new class extends Migration
                 'add_to_cart',
                 'purchase',
                 'like',
-                'share'
+                'share',
             ]);
             $table->string('session_id')->nullable();
             $table->string('visitor_id')->nullable();

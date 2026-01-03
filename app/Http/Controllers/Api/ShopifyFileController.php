@@ -9,9 +9,7 @@ use Illuminate\Http\Request;
 
 class ShopifyFileController extends Controller
 {
-    public function __construct(public ShopifyService $shopifyService)
-    {
-    }
+    public function __construct(public ShopifyService $shopifyService) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -23,7 +21,7 @@ class ShopifyFileController extends Controller
             $request->query('after')
         );
 
-        if (!$files) {
+        if (! $files) {
             return response()->json(['error' => 'Unable to fetch files from Shopify'], 422);
         }
 
@@ -66,7 +64,7 @@ class ShopifyFileController extends Controller
             (int) $validated['file_size']
         );
 
-        if (!$target) {
+        if (! $target) {
             return response()->json(['error' => 'Unable to create staged upload target'], 422);
         }
 
@@ -90,7 +88,7 @@ class ShopifyFileController extends Controller
             $validated['alt'] ?? null
         );
 
-        if (!$file) {
+        if (! $file) {
             return response()->json(['error' => 'Unable to finalize Shopify file'], 422);
         }
 

@@ -13,8 +13,8 @@ class ShopifyFrameHeaders
         $response = $next($request);
 
         // Allow Shopify to embed this app in an iframe
-        $response->headers->set('Content-Security-Policy', "frame-ancestors https://*.myshopify.com https://admin.shopify.com");
-        
+        $response->headers->set('Content-Security-Policy', 'frame-ancestors https://*.myshopify.com https://admin.shopify.com');
+
         // Remove X-Frame-Options as CSP frame-ancestors takes precedence
         $response->headers->remove('X-Frame-Options');
 

@@ -32,12 +32,17 @@ class Subscription extends Model
     ];
 
     const PLAN_FREE = 'free';
+
     const PLAN_PRO = 'pro';
 
     const STATUS_PENDING = 'pending';
+
     const STATUS_ACTIVE = 'active';
+
     const STATUS_CANCELLED = 'cancelled';
+
     const STATUS_FROZEN = 'frozen';
+
     const STATUS_EXPIRED = 'expired';
 
     const PRO_PRICE = 29.99;

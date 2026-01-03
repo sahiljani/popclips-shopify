@@ -229,7 +229,7 @@ class AnalyticsController extends Controller
         $shop = $request->attributes->get('shop');
         $days = $request->query('days', 30);
 
-        if (!$shop->isPro()) {
+        if (! $shop->isPro()) {
             return response()->json([
                 'error' => 'Analytics export requires a Pro subscription',
             ], 403);

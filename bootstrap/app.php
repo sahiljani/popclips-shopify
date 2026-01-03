@@ -26,10 +26,10 @@ return Application::configure(basePath: dirname(__DIR__))
                 Request::HEADER_X_FORWARDED_PORT |
                 Request::HEADER_X_FORWARDED_PROTO
         );
-        
+
         // Allow Shopify to embed the app
         $middleware->append(ShopifyFrameHeaders::class);
-        
+
         $middleware->alias([
             'shopify.auth' => AuthenticateShop::class,
             'shopify.verify' => VerifyShopifyRequest::class,

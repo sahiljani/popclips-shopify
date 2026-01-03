@@ -89,6 +89,7 @@ class Shop extends Model
     public function getSetting(string $key, $default = null)
     {
         $settings = array_merge($this->getDefaultSettings(), $this->settings ?? []);
+
         return $settings[$key] ?? $default;
     }
 }

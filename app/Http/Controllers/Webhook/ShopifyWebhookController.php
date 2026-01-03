@@ -61,7 +61,7 @@ class ShopifyWebhookController extends Controller
 
         $shop = Shop::where('shopify_domain', $shopDomain)->first();
 
-        if (!$shop) {
+        if (! $shop) {
             return response()->json(['success' => true]);
         }
 
@@ -111,12 +111,14 @@ class ShopifyWebhookController extends Controller
     public function customersDataRequest(Request $request): JsonResponse
     {
         Log::info('Customer data request webhook received');
+
         return response()->json(['success' => true]);
     }
 
     public function customersRedact(Request $request): JsonResponse
     {
         Log::info('Customer redact webhook received');
+
         return response()->json(['success' => true]);
     }
 

@@ -37,11 +37,17 @@ class Analytics extends Model
     ];
 
     const EVENT_CLIP_VIEW = 'clip_view';
+
     const EVENT_CLIP_COMPLETE = 'clip_complete';
+
     const EVENT_HOTSPOT_CLICK = 'hotspot_click';
+
     const EVENT_ADD_TO_CART = 'add_to_cart';
+
     const EVENT_PURCHASE = 'purchase';
+
     const EVENT_LIKE = 'like';
+
     const EVENT_SHARE = 'share';
 
     public function shop(): BelongsTo

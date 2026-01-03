@@ -10,9 +10,7 @@ use Illuminate\Http\Request;
 
 class SubscriptionController extends Controller
 {
-    public function __construct(protected ShopifyService $shopifyService)
-    {
-    }
+    public function __construct(protected ShopifyService $shopifyService) {}
 
     public function current(Request $request): JsonResponse
     {
@@ -49,7 +47,7 @@ class SubscriptionController extends Controller
             $returnUrl
         );
 
-        if (!$charge) {
+        if (! $charge) {
             return response()->json([
                 'error' => 'Failed to create subscription charge',
             ], 500);
@@ -67,21 +65,21 @@ class SubscriptionController extends Controller
         $shop = $request->attributes->get('shop');
         $chargeId = $request->query('charge_id');
 
-        if (!$chargeId) {
+        if (! $chargeId) {
             return redirect()->route('admin.settings', ['shop' => $shop->shopify_domain])
                 ->with('error', 'Missing charge ID');
         }
 
         $charge = $this->shopifyService->getRecurringCharge($shop, $chargeId);
 
-        if (!$charge) {
+        if (! $charge) {
             return redirect()->route('admin.settings', ['shop' => $shop->shopify_domain])
                 ->with('error', 'Failed to verify charge');
         }
 
         $subscription = Subscription::where('shopify_charge_id', $chargeId)->first();
 
-        if (!$subscription) {
+        if (! $subscription) {
             return redirect()->route('admin.settings', ['shop' => $shop->shopify_domain])
                 ->with('error', 'Subscription not found');
         }
@@ -105,7 +103,7 @@ class SubscriptionController extends Controller
 
         $subscription = $shop->activeSubscription;
 
-        if (!$subscription || !$subscription->isPro()) {
+        if (! $subscription || ! $subscription->isPro()) {
             return response()->json([
                 'error' => 'No active Pro subscription to cancel',
             ], 400);

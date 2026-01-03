@@ -10,7 +10,9 @@ use Illuminate\Support\Facades\Log;
 class CloudinaryService
 {
     protected string $cloudName;
+
     protected string $apiKey;
+
     protected string $apiSecret;
 
     public function __construct()
@@ -46,9 +48,9 @@ class CloudinaryService
 
             ksort($params);
             $toSign = collect($params)
-                ->map(fn($value, $key) => "{$key}={$value}")
+                ->map(fn ($value, $key) => "{$key}={$value}")
                 ->implode('&');
-            $signature = sha1($toSign . $this->apiSecret);
+            $signature = sha1($toSign.$this->apiSecret);
 
             $response = Http::attach(
                 'file',
@@ -107,9 +109,9 @@ class CloudinaryService
 
             ksort($params);
             $toSign = collect($params)
-                ->map(fn($value, $key) => "{$key}={$value}")
+                ->map(fn ($value, $key) => "{$key}={$value}")
                 ->implode('&');
-            $signature = sha1($toSign . $this->apiSecret);
+            $signature = sha1($toSign.$this->apiSecret);
 
             $response = Http::post("https://api.cloudinary.com/v1_1/{$this->cloudName}/video/destroy", [
                 ...$params,
@@ -132,9 +134,9 @@ class CloudinaryService
     {
         $transforms = '';
 
-        if (!empty($transformations)) {
-            $transforms = '/' . collect($transformations)
-                ->map(fn($value, $key) => "{$key}_{$value}")
+        if (! empty($transformations)) {
+            $transforms = '/'.collect($transformations)
+                ->map(fn ($value, $key) => "{$key}_{$value}")
                 ->implode(',');
         }
 
@@ -152,10 +154,10 @@ class CloudinaryService
 
         ksort($params);
         $toSign = collect($params)
-            ->map(fn($value, $key) => "{$key}={$value}")
+            ->map(fn ($value, $key) => "{$key}={$value}")
             ->implode('&');
 
-        return sha1($toSign . $this->apiSecret);
+        return sha1($toSign.$this->apiSecret);
     }
 
     public function getUploadParams(int $shopId): array

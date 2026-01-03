@@ -42,7 +42,7 @@ class CarouselController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        if ($request->input('type') === 'custom' && !$shop->isPro()) {
+        if ($request->input('type') === 'custom' && ! $shop->isPro()) {
             return response()->json([
                 'error' => 'Custom carousels require a Pro subscription',
             ], 403);
@@ -148,7 +148,7 @@ class CarouselController extends Controller
 
         $carousel = Carousel::forShop($shop->id)->findOrFail($id);
 
-        if (!$carousel->isCustom()) {
+        if (! $carousel->isCustom()) {
             return response()->json([
                 'error' => 'Can only add clips to custom carousels',
             ], 400);
@@ -166,7 +166,7 @@ class CarouselController extends Controller
         $currentCount = $carousel->clips()->count();
 
         foreach ($request->input('clip_ids') as $clipId) {
-            if (!$carousel->clips()->where('clip_id', $clipId)->exists()) {
+            if (! $carousel->clips()->where('clip_id', $clipId)->exists()) {
                 $carousel->clips()->attach($clipId, ['position' => $currentCount++]);
             }
         }
@@ -180,7 +180,7 @@ class CarouselController extends Controller
 
         $carousel = Carousel::forShop($shop->id)->findOrFail($id);
 
-        if (!$carousel->isCustom()) {
+        if (! $carousel->isCustom()) {
             return response()->json([
                 'error' => 'Can only remove clips from custom carousels',
             ], 400);

@@ -12,9 +12,7 @@ use Illuminate\Support\Facades\Validator;
 
 class HotspotController extends Controller
 {
-    public function __construct(protected ShopifyService $shopifyService)
-    {
-    }
+    public function __construct(protected ShopifyService $shopifyService) {}
 
     public function index(Request $request, int $clipId): JsonResponse
     {
@@ -48,7 +46,7 @@ class HotspotController extends Controller
 
         $product = $this->shopifyService->getProduct($shop, $request->input('shopify_product_id'));
 
-        if (!$product) {
+        if (! $product) {
             return response()->json(['error' => 'Product not found'], 404);
         }
 

@@ -11,9 +11,7 @@ use Illuminate\Support\Facades\Validator;
 
 class ClipController extends Controller
 {
-    public function __construct(protected CloudinaryService $cloudinaryService)
-    {
-    }
+    public function __construct(protected CloudinaryService $cloudinaryService) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -74,9 +72,10 @@ class ClipController extends Controller
             'file_size' => $request->input('file_size'),
             'aspect_ratio' => $request->input('aspect_ratio', '9:16'),
             'status' => 'ready',
-        });
-    }
+        ]);
+
         return response()->json($clip, 201);
+    }
 
     public function show(Request $request, int $id): JsonResponse
     {
@@ -107,7 +106,7 @@ class ClipController extends Controller
 
         $clip->update($request->only(['title', 'description', 'is_published']));
 
-        if ($request->has('is_published') && $request->boolean('is_published') && !$clip->published_at) {
+        if ($request->has('is_published') && $request->boolean('is_published') && ! $clip->published_at) {
             $clip->publish();
         }
 

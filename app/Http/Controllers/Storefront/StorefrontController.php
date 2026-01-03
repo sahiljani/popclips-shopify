@@ -16,7 +16,7 @@ class StorefrontController extends Controller
     {
         $shop = $request->attributes->get('shop');
 
-        if (!$shop) {
+        if (! $shop) {
             return response()->json(['error' => 'Shop not found'], 404);
         }
 
@@ -34,11 +34,11 @@ class StorefrontController extends Controller
                 ->first();
         }
 
-        if (!$carousel) {
+        if (! $carousel) {
             $carousel = Carousel::forShop($shop->id)->standard()->active()->first();
         }
 
-        if (!$carousel) {
+        if (! $carousel) {
             return response()->json(['clips' => [], 'settings' => []]);
         }
 
@@ -77,7 +77,7 @@ class StorefrontController extends Controller
     {
         $shop = $request->attributes->get('shop');
 
-        if (!$shop) {
+        if (! $shop) {
             return response()->json(['error' => 'Shop not found'], 404);
         }
 
@@ -86,7 +86,7 @@ class StorefrontController extends Controller
             ->with('hotspots')
             ->find($id);
 
-        if (!$clip) {
+        if (! $clip) {
             return response()->json(['error' => 'Clip not found'], 404);
         }
 
@@ -107,7 +107,7 @@ class StorefrontController extends Controller
     {
         $shop = $request->attributes->get('shop');
 
-        if (!$shop) {
+        if (! $shop) {
             return response()->json(['error' => 'Shop not found'], 404);
         }
 

@@ -1,7 +1,7 @@
 <?php
 
-use App\Http\Controllers\Auth\ShopifyAuthController;
 use App\Http\Controllers\Api\SubscriptionController;
+use App\Http\Controllers\Auth\ShopifyAuthController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -10,6 +10,7 @@ Route::get('/', function (Request $request) {
     if ($request->query('shop')) {
         return redirect()->route('shopify.install', ['shop' => $request->query('shop')]);
     }
+
     return view('admin');
 });
 
@@ -21,10 +22,11 @@ Route::get('/admin/{any?}', function (Request $request) {
     $shopDomain = $request->query('shop');
     if ($shopDomain) {
         $shop = \App\Models\Shop::where('shopify_domain', $shopDomain)->first();
-        if (!$shop || !$shop->access_token) {
+        if (! $shop || ! $shop->access_token) {
             return redirect()->route('shopify.install', ['shop' => $shopDomain]);
         }
     }
+
     return view('admin');
 })->where('any', '.*')->name('admin.dashboard');
 

@@ -112,7 +112,7 @@ class Clip extends Model
 
     public function getFormattedDurationAttribute(): string
     {
-        if (!$this->duration) {
+        if (! $this->duration) {
             return '0:00';
         }
 
@@ -124,7 +124,7 @@ class Clip extends Model
 
     public function getFormattedFileSizeAttribute(): string
     {
-        if (!$this->file_size) {
+        if (! $this->file_size) {
             return '0 KB';
         }
 
@@ -137,6 +137,6 @@ class Clip extends Model
             $i++;
         }
 
-        return round($bytes, 2) . ' ' . $units[$i];
+        return round($bytes, 2).' '.$units[$i];
     }
 }

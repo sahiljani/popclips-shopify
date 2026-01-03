@@ -13,7 +13,7 @@ class VerifyAppProxyRequest
     {
         $query = $request->query();
 
-        if (!isset($query['signature'])) {
+        if (! isset($query['signature'])) {
             return response()->json(['error' => 'Missing signature'], 401);
         }
 
@@ -34,7 +34,7 @@ class VerifyAppProxyRequest
             config('services.shopify.api_secret')
         );
 
-        if (!hash_equals($calculatedSignature, $signature)) {
+        if (! hash_equals($calculatedSignature, $signature)) {
             return response()->json(['error' => 'Invalid signature'], 401);
         }
 

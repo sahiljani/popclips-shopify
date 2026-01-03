@@ -13,7 +13,7 @@ class AuthenticateShop
     {
         $shopDomain = $request->query('shop') ?? $request->header('X-Shop-Domain');
 
-        if (!$shopDomain) {
+        if (! $shopDomain) {
             return response()->json(['error' => 'Shop domain required'], 401);
         }
 
@@ -21,7 +21,7 @@ class AuthenticateShop
             ->where('is_active', true)
             ->first();
 
-        if (!$shop) {
+        if (! $shop) {
             return response()->json(['error' => 'Shop not found or inactive'], 401);
         }
 
