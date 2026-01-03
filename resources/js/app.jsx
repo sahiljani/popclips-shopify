@@ -7,6 +7,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { AppProvider, Frame } from '@shopify/polaris';
 import en from '@shopify/polaris/locales/en.json';
 import Navigation from './components/Navigation';
+import ShopDomainCheck from './components/ShopDomainCheck';
 import Dashboard from './pages/Dashboard';
 import ClipsList from './pages/ClipsList';
 import ClipCreate from './pages/ClipCreate';
@@ -22,6 +23,7 @@ function App() {
   return (
     <AppProvider i18n={en}>
       <Frame navigation={<Navigation />}>
+        <ShopDomainCheck />
         <Routes>
           <Route path="/" element={<Dashboard shop={shopDomain} />} />
           <Route path="/clips" element={<ClipsList shop={shopDomain} />} />

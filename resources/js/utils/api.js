@@ -1,7 +1,35 @@
 const API_BASE = '/api/v1';
 
+/**
+ * Get shop domain from URL or localStorage
+ */
+function getShopDomain() {
+  // First try URL parameter
+  const urlParams = new URLSearchParams(window.location.search);
+  let shopDomain = urlParams.get('shop');
+  
+  if (shopDomain) {
+    // Store in localStorage for future use
+    localStorage.setItem('shop_domain', shopDomain);
+    return shopDomain;
+  }
+  
+  // Fallback to localStorage
+  shopDomain = localStorage.getItem('shop_domain');
+  
+  if (!shopDomain) {
+    console.error('No shop domain found. Please add ?shop=your-shop.myshopify.com to the URL');
+  }
+  
+  return shopDomain;
+}
+
 async function request(endpoint, options = {}) {
-  const shopDomain = new URLSearchParams(window.location.search).get('shop');
+  const shopDomain = getShopDomain();
+
+  if (!shopDomain) {
+    throw new Error('Shop domain is required. Please add ?shop=your-shop.myshopify.com to the URL');
+  }
 
   const headers = {
     'Content-Type': 'application/json',
@@ -18,7 +46,24 @@ async function request(endpoint, options = {}) {
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    throw new Error(error.message || error.error || 'Request failed');
+    
+    // Enhanced error message with debugging info
+    let errorMessage = error.message || error.error || 'Request failed';
+    
+    if (error.hint) {
+      errorMessage += '\n\nHint: ' + error.hint;
+    }
+    
+    if (error.active_shops && error.active_shops.length > 0) {
+      errorMessage += '\n\nAvailable shops: ' + error.active_shops.join(', ');
+    }
+    
+    if (error.provided_domain) {
+      errorMessage += '\n\nYou provided: ' + error.provided_domain;
+    }
+    
+    console.error('API Error:', error);
+    throw new Error(errorMessage);
   }
 
   if (response.status === 204) {
