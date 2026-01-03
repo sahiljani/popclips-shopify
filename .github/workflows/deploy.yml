@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Deploy and run deployment script
+      - name: Test SSH Connection
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -19,95 +19,55 @@ jobs:
           password: ${{ secrets.SSH_PASSWORD }}
           port: 22
           script: |
-            cd /home/janisahil-popclips/htdocs/popclips.janisahil.com
+            echo "✅ SSH Connection successful!"
+            whoami
+            pwd
+            ls -la /home/janisahil-popclips/htdocs/ | head -20
+
+      - name: Deploy Application
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          port: 22
+          command_timeout: 30m
+          script: |
+            cd /home/janisahil-popclips/htdocs/popclips.janisahil.com || exit 1
             
-            echo "🚀 Starting deployment via GitHub Actions..."
+            echo "🚀 Starting deployment..."
             
-            # Verify we're in the right directory
-            if [ ! -f "artisan" ]; then
-              echo "❌ Error: artisan file not found. Wrong directory?"
-              exit 1
-            fi
-            
-            # Pull latest changes from GitHub
+            # Pull latest code
             git fetch origin main
             git reset --hard origin/main
-            echo "✅ Code updated from GitHub"
+            echo "✅ Code updated"
             
-            # Enable maintenance mode
-            php artisan down --refresh=15 --retry=60 || echo "⚠️ Maintenance mode failed"
-            
-            # Install Composer dependencies (production)
+            # Install dependencies
             composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
-            echo "✅ Composer dependencies installed"
+            echo "✅ Dependencies installed"
             
-            # Install NPM dependencies and build assets
-            if command -v npm &> /dev/null; then
-              npm ci
-              npm run build
-              echo "✅ Frontend assets built"
-            else
-              echo "⚠️ npm not found, skipping frontend build"
-            fi
+            # Build assets
+            npm ci && npm run build
+            echo "✅ Assets built"
             
-            # Run database migrations
-            php artisan migrate --force || {
-              echo "❌ Error: Migration failed"
-              php artisan up
-              exit 1
-            }
-            echo "✅ Migrations completed"
+            # Run migrations
+            php artisan migrate --force
+            echo "✅ Migrations done"
             
-            # Optimize application
-            php artisan optimize:clear
-            php artisan config:cache
-            php artisan route:cache
-            php artisan view:cache
-            echo "✅ Application optimized"
+            # Clear and cache
+            php artisan optimize
+            echo "✅ Optimized"
             
-            # Restart queue workers
-            php artisan queue:restart 2>/dev/null || echo "ℹ️ No queue workers to restart"
+            # Set permissions
+            chmod -R 775 storage bootstrap/cache
             
-            # Set correct permissions
-            chmod -R 775 storage bootstrap/cache 2>/dev/null
-            
-            # Disable maintenance mode
-            php artisan up
-            echo "✅ Maintenance mode disabled"
-            
-            echo "✅ Deployment completed successfully!"
-            echo "🚀 Application is now live!"
+            echo "✅ Deployment completed!"
 
-      - name: Verify deployment
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          password: ${{ secrets.SSH_PASSWORD }}
-          port: 22
-          script: |
-            cd /home/janisahil-popclips/htdocs/popclips.janisahil.com
-            
-            echo "🔍 Verifying deployment..."
-            
-            # Check if application is healthy
-            if php artisan about &> /dev/null; then
-              echo "✅ Application is healthy"
-              php artisan about --only=environment
-            else
-              echo "❌ Application health check failed"
-              exit 1
-            fi
-            
-            echo "✅ Deployment verification completed!"
-
-      - name: Deployment summary
+      - name: Summary
         if: always()
         run: |
           if [ "${{ job.status }}" == "success" ]; then
-            echo "✅ ✅ ✅ DEPLOYMENT SUCCESSFUL ✅ ✅ ✅"
-            echo "🚀 Application deployed and verified successfully!"
+            echo "✅ DEPLOYMENT SUCCESSFUL!"
           else
-            echo "❌ ❌ ❌ DEPLOYMENT FAILED ❌ ❌ ❌"
-            echo "⚠️ Check the logs above for details"
+            echo "❌ DEPLOYMENT FAILED!"
           fi
