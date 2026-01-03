@@ -6,12 +6,37 @@ on:
   workflow_dispatch:
 
 jobs:
-  deploy:
-    name: Deploy to Production Server
+  build-and-deploy:
+    name: Build & Deploy to Production
     runs-on: ubuntu-latest
 
     steps:
-      - name: Deploy Application
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install NPM dependencies
+        run: npm ci
+
+      - name: Build assets
+        run: npm run build
+
+      - name: Commit built assets
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add -f public/build
+          git diff-index --quiet HEAD || git commit -m "chore: Build assets for deployment [skip ci]"
+
+      - name: Push built assets
+        run: git push origin main || echo "No changes to push"
+
+      - name: Deploy to Server
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -32,7 +57,7 @@ jobs:
             # Enable maintenance mode
             php artisan down --refresh=15 --retry=60 2>/dev/null || echo "⚠️ Maintenance mode skipped"
             
-            # Pull latest code
+            # Pull latest code (including built assets)
             git fetch origin main
             git reset --hard origin/main
             echo "✅ Code updated from GitHub"
@@ -45,13 +70,13 @@ jobs:
             composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
             echo "✅ Composer dependencies installed"
             
-            # Build assets if npm available
-            if command -v npm &> /dev/null; then
-              npm ci
-              npm run build
-              echo "✅ Assets built"
+            # Verify assets exist
+            if [ -f "public/build/manifest.json" ]; then
+              echo "✅ Frontend assets found"
             else
-              echo "⚠️ npm not found, assets not rebuilt"
+              echo "❌ ERROR: Frontend assets missing!"
+              php artisan up 2>/dev/null || true
+              exit 1
             fi
             
             # Run migrations
@@ -106,7 +131,7 @@ jobs:
         run: |
           if [ "${{ job.status }}" == "success" ]; then
             echo "🎉 ✅ DEPLOYMENT SUCCESSFUL ✅ 🎉"
-            echo "🚀 Application deployed and live at your domain!"
+            echo "🚀 Application deployed and live!"
           else
             echo "❌ ❌ DEPLOYMENT FAILED ❌ ❌"
             echo "⚠️ Check logs above for error details"
