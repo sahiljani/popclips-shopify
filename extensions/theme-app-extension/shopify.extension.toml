@@ -1,0 +1,10 @@
+api_version = "2024-01"
+
+[extensions.theme]
+name = "Popclips Video Carousel"
+embedded = true
+
+[[extensions.theme.blocks]]
+type = "popclips-carousel"
+name = "Popclips Video Carousel"
+target = "section"
